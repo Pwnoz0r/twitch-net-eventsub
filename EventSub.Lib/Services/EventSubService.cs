@@ -33,69 +33,74 @@ namespace EventSub.Lib.Services
             _clientSecret = _config.GetValue<string>("EventSub:ClientSecret");
         }
 
-        public async Task<bool> AuthorizeAsync()
-        {
-            if (_authRetryCounter >= _maxRetries)
-                return false;
-
-            var queryBuilder = new QueryBuilder
-            {
-                {"client_id", _clientId},
-                {"client_secret", _clientSecret},
-                {"grant_type", "client_credentials"},
-                {"scope", "user:edit"}
-            };
-
-            var uriBuilder = new UriBuilder(Shared.TwitchAuthUri) {Query = queryBuilder.ToString()};
-
-            var httpClient = new HttpClient();
-            httpClient.DefaultRequestHeaders.Clear();
-
-            var response = await httpClient.PostAsync(uriBuilder.Uri, default!);
-            var responseContent = await response.Content.ReadAsStringAsync();
-
-            if (!response.IsSuccessStatusCode)
-            {
-                _logger.LogWarning($"Unable to authorize client: {responseContent}");
-
-                _authRetryCounter++;
-                await Task.Delay(TimeSpan.FromSeconds(3));
-                await AuthorizeAsync();
-            }
-
-            _twitchClientToken = JsonConvert.DeserializeObject<TwitchClientToken>(responseContent);
-            return true;
-        }
-
         public async Task<TwitchEventSubs> GetEventsAsync()
         {
-            if (_retryCounter >= _maxRetries)
-                return default;
-
             var httpClient = await GenerateEventSubHttpClient();
+            if (httpClient == default) return default;
 
-            var response = await httpClient.GetAsync("subscriptions");
-            var responseContent = await response.Content.ReadAsStringAsync();
+            var response = await httpClient.GetAsync(Shared.TwitchEventSubSubscriptionsEndpoint);
 
-            if (response.IsSuccessStatusCode) return JsonConvert.DeserializeObject<TwitchEventSubs>(responseContent);
+            TwitchEventSubs twitchEventSubs = null;
 
-            _logger.LogWarning($"Unable to get events: {responseContent}");
+            while (twitchEventSubs == null) twitchEventSubs = await ParseResponse<TwitchEventSubs>(response);
 
-            _retryCounter++;
-            await GetEventsAsync();
-            await Task.Delay(TimeSpan.FromSeconds(3));
-
-            return JsonConvert.DeserializeObject<TwitchEventSubs>(responseContent);
+            return twitchEventSubs;
         }
 
-        public Task CreateEventAsync()
+        public async Task CreateEventAsync()
         {
-            throw new NotImplementedException();
+            var httpClient = await GenerateEventSubHttpClient();
+            if (httpClient == default) return;
+
+            //var response = httpClient.PostAsync(Shared.TwitchEventSubSubscriptionsEndpoint)
+        }
+
+        private async Task AuthorizeAsync()
+        {
+            while (true)
+            {
+                var queryBuilder = new QueryBuilder
+                {
+                    {"client_id", _clientId},
+                    {"client_secret", _clientSecret},
+                    {"grant_type", "client_credentials"},
+                    {"scope", "user:edit"}
+                };
+
+                var uriBuilder = new UriBuilder(Shared.TwitchAuthUri) {Query = queryBuilder.ToString()};
+
+                var httpClient = new HttpClient();
+                httpClient.DefaultRequestHeaders.Clear();
+
+                var response = await httpClient.PostAsync(uriBuilder.Uri, default!);
+                var responseContent = await response.Content.ReadAsStringAsync();
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    _logger.LogWarning($"Unable to authorize client: {responseContent.Trim()}");
+
+                    _authRetryCounter++;
+
+                    if (_authRetryCounter >= _maxRetries) return;
+
+                    await Task.Delay(TimeSpan.FromSeconds(3));
+                    continue;
+                }
+
+                _twitchClientToken = JsonConvert.DeserializeObject<TwitchClientToken>(responseContent);
+                _authRetryCounter = 0;
+
+                break;
+            }
         }
 
         private async Task<HttpClient> GenerateEventSubHttpClient()
         {
-            if (_twitchClientToken == null) await AuthorizeAsync();
+            if (_twitchClientToken == null)
+            {
+                await AuthorizeAsync();
+                return default;
+            }
 
             var httpClient = new HttpClient {BaseAddress = Shared.TwitchEventSubBaseUri};
             httpClient.DefaultRequestHeaders.Clear();
@@ -103,6 +108,32 @@ namespace EventSub.Lib.Services
             httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {_twitchClientToken.AccessToken}");
 
             return httpClient;
+        }
+
+        private async Task<T> ParseResponse<T>(HttpResponseMessage response)
+        {
+            if (response?.RequestMessage == null) return default;
+
+            var responseContent = await response.Content.ReadAsStringAsync();
+
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogWarning(
+                    $"Failed Response [{response.RequestMessage.Method}] -> {response.RequestMessage.RequestUri} -> {responseContent.Trim()}");
+
+                _retryCounter++;
+
+                if (_retryCounter >= _maxRetries)
+                {
+                    _retryCounter = 0;
+                    return default;
+                }
+
+                await Task.Delay(TimeSpan.FromSeconds(3));
+            }
+
+            _retryCounter = 0;
+            return JsonConvert.DeserializeObject<T>(responseContent);
         }
     }
 }

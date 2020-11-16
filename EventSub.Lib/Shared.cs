@@ -9,5 +9,7 @@ namespace EventSub.Lib
         public static Uri TwitchEventSubBaseUri { get; } = new("https://api.twitch.tv/helix/eventsub/subscriptions");
 
         public static Uri TwitchAuthUri { get; } = new("https://id.twitch.tv/oauth2/token");
+
+        public static string TwitchEventSubSubscriptionsEndpoint { get; } = "subscriptions";
     }
 }

@@ -7,8 +7,6 @@ namespace EventSub.Lib.Interfaces
 {
     public interface IEventSub
     {
-        Task<bool> AuthorizeAsync();
-
         Task<TwitchEventSubs> GetEventsAsync();
 
         Task CreateEventAsync();
