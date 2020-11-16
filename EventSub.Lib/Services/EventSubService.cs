@@ -14,10 +14,13 @@ namespace EventSub.Lib.Services
 {
     public class EventSubService : IEventSub
     {
+        private readonly string _clientId;
+        private readonly string _clientSecret;
         private readonly IConfiguration _config;
         private readonly ILogger<EventSubService> _logger;
         private readonly int _maxRetries;
 
+        private int _authRetryCounter;
         private int _retryCounter;
         private TwitchClientToken _twitchClientToken;
 
@@ -25,15 +28,20 @@ namespace EventSub.Lib.Services
         {
             _logger = logger;
             _config = config;
-            _maxRetries = _config.GetValue<int>("Twitch:MaxRetries");
+            _maxRetries = _config.GetValue<int>("EventSub:MaxRetries");
+            _clientId = _config.GetValue<string>("EventSub:ClientId");
+            _clientSecret = _config.GetValue<string>("EventSub:ClientSecret");
         }
 
-        public async Task AuthorizeAsync()
+        public async Task<bool> AuthorizeAsync()
         {
+            if (_authRetryCounter >= _maxRetries)
+                return false;
+
             var queryBuilder = new QueryBuilder
             {
-                {"client_id", _config.GetValue<string>("Twitch:ClientId")},
-                {"client_secret", _config.GetValue<string>("Twitch:ClientSecret")},
+                {"client_id", _clientId},
+                {"client_secret", _clientSecret},
                 {"grant_type", "client_credentials"},
                 {"scope", "user:edit"}
             };
@@ -47,39 +55,51 @@ namespace EventSub.Lib.Services
             var responseContent = await response.Content.ReadAsStringAsync();
 
             if (!response.IsSuccessStatusCode)
+            {
                 _logger.LogWarning($"Unable to authorize client: {responseContent}");
-            else
-                _twitchClientToken = JsonConvert.DeserializeObject<TwitchClientToken>(responseContent);
+
+                _authRetryCounter++;
+                await Task.Delay(TimeSpan.FromSeconds(3));
+                await AuthorizeAsync();
+            }
+
+            _twitchClientToken = JsonConvert.DeserializeObject<TwitchClientToken>(responseContent);
+            return true;
         }
 
         public async Task<TwitchEventSubs> GetEventsAsync()
         {
-            if (_twitchClientToken == null) await AuthorizeAsync();
+            if (_retryCounter >= _maxRetries)
+                return default;
 
-            var httpClient = GenerateEventSubHttpClient();
+            var httpClient = await GenerateEventSubHttpClient();
 
             var response = await httpClient.GetAsync("subscriptions");
             var responseContent = await response.Content.ReadAsStringAsync();
 
             if (response.IsSuccessStatusCode) return JsonConvert.DeserializeObject<TwitchEventSubs>(responseContent);
 
-            if (_retryCounter >= _maxRetries)
-                return default;
-
             _logger.LogWarning($"Unable to get events: {responseContent}");
-            await AuthorizeAsync();
+
+            _retryCounter++;
             await GetEventsAsync();
             await Task.Delay(TimeSpan.FromSeconds(3));
-            _retryCounter++;
 
             return JsonConvert.DeserializeObject<TwitchEventSubs>(responseContent);
         }
 
-        private HttpClient GenerateEventSubHttpClient()
+        public Task CreateEventAsync()
         {
+            throw new NotImplementedException();
+        }
+
+        private async Task<HttpClient> GenerateEventSubHttpClient()
+        {
+            if (_twitchClientToken == null) await AuthorizeAsync();
+
             var httpClient = new HttpClient {BaseAddress = Shared.TwitchEventSubBaseUri};
             httpClient.DefaultRequestHeaders.Clear();
-            httpClient.DefaultRequestHeaders.Add("Client-ID", _config.GetValue<string>("Twitch:ClientId"));
+            httpClient.DefaultRequestHeaders.Add("Client-ID", _clientId);
             httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {_twitchClientToken.AccessToken}");
 
             return httpClient;

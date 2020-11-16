@@ -33,7 +33,6 @@ namespace EventSub.Test.Services
                 return;
             }
 
-            await eventSub.AuthorizeAsync();
             var eventSubs = await eventSub.GetEventsAsync();
         }
 
