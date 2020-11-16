@@ -5,10 +5,15 @@ using System.IO;
 using System.Reflection;
 using EventSub.Lib.Interfaces;
 using EventSub.Lib.Services;
+using EventSub.Test.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Serilog;
+
+var hostBuilder = CreateHostBuilder();
+var host = hostBuilder.Build();
+await host.RunAsync();
 
 static IHostBuilder CreateHostBuilder()
 {
@@ -39,7 +44,11 @@ static IHostBuilder CreateHostBuilder()
 
             Log.Logger.Information($"Initialized for {env}");
         })
-        .ConfigureServices((_, services) => { services.AddScoped<IEventSub, EventSubService>(); })
+        .ConfigureServices((_, services) =>
+        {
+            services.AddScoped<IEventSub, EventSubService>();
+            services.AddHostedService<TestService>();
+        })
         .UseSerilog();
 
     return host;
