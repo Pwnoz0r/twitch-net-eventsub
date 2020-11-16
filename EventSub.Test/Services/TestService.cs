@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using EventSub.Lib.Interfaces;
@@ -34,6 +35,13 @@ namespace EventSub.Test.Services
             }
 
             var eventSubs = await eventSub.GetEventsAsync();
+
+            if (!eventSubs.Data.Any())
+            {
+                await eventSub.CreateStreamOnlineEvent(
+                    _config.GetValue<string>("EventSub:StreamOnline:ChannelId"),
+                    _config.GetValue<Uri>("EventSub:StreamOnline:WebHookUrl"));
+            }
         }
 
         public override Task StartAsync(CancellationToken cancellationToken)

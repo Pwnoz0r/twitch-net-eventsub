@@ -1,27 +1,38 @@
 ﻿// Copyright (c) 2020 Pwn (Jonathan) / All rights reserved.
 
 using System;
-using System.Collections.Generic;
 using Newtonsoft.Json;
 
-namespace EventSub.Lib.Models
+namespace EventSub.Lib.Models.Responses
 {
-    public class TwitchEventSubs
+    public class StreamOnlineNotification
     {
-        [JsonProperty("total", NullValueHandling = NullValueHandling.Ignore)]
-        public long? Total { get; set; }
+        [JsonProperty("subscription", NullValueHandling = NullValueHandling.Ignore)]
+        public Subscription Subscription { get; set; }
 
-        [JsonProperty("data", NullValueHandling = NullValueHandling.Ignore)]
-        public List<TwitchEventSub> Data { get; set; }
+        [JsonProperty("event", NullValueHandling = NullValueHandling.Ignore)]
+        public Event Event { get; set; }
     }
 
-    public class TwitchEventSub
+    public class Event
     {
         [JsonProperty("id", NullValueHandling = NullValueHandling.Ignore)]
         public string Id { get; set; }
 
-        [JsonProperty("status", NullValueHandling = NullValueHandling.Ignore)]
-        public string Status { get; set; }
+        [JsonProperty("broadcaster_user_id", NullValueHandling = NullValueHandling.Ignore)]
+        public string BroadcasterUserId { get; set; }
+
+        [JsonProperty("broadcaster_user_name", NullValueHandling = NullValueHandling.Ignore)]
+        public string BroadcasterUserName { get; set; }
+
+        [JsonProperty("type", NullValueHandling = NullValueHandling.Ignore)]
+        public string Type { get; set; }
+    }
+
+    public class Subscription
+    {
+        [JsonProperty("id", NullValueHandling = NullValueHandling.Ignore)]
+        public string Id { get; set; }
 
         [JsonProperty("type", NullValueHandling = NullValueHandling.Ignore)]
         public string Type { get; set; }
@@ -52,8 +63,5 @@ namespace EventSub.Lib.Models
 
         [JsonProperty("callback", NullValueHandling = NullValueHandling.Ignore)]
         public Uri Callback { get; set; }
-
-        [JsonProperty("secret", NullValueHandling = NullValueHandling.Ignore)]
-        public string Secret { get; set; }
     }
 }

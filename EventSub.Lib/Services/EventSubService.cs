@@ -4,12 +4,18 @@ using System;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
+using EventSub.Lib.Attributes;
+using EventSub.Lib.Enums;
+using EventSub.Lib.Extensions;
 using EventSub.Lib.Interfaces;
 using EventSub.Lib.Models;
+using EventSub.Lib.Models.Responses;
 using Microsoft.AspNetCore.Http.Extensions;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
+using Condition = EventSub.Lib.Models.Condition;
+using Transport = EventSub.Lib.Models.Transport;
 
 namespace EventSub.Lib.Services
 {
@@ -17,7 +23,6 @@ namespace EventSub.Lib.Services
     {
         private readonly string _clientId;
         private readonly string _clientSecret;
-        private readonly IConfiguration _config;
         private readonly ILogger<EventSubService> _logger;
         private readonly int _maxRetries;
 
@@ -28,35 +33,64 @@ namespace EventSub.Lib.Services
         public EventSubService(ILogger<EventSubService> logger, IConfiguration config)
         {
             _logger = logger;
-            _config = config;
-            _maxRetries = _config.GetValue<int>("EventSub:MaxRetries");
-            _clientId = _config.GetValue<string>("EventSub:ClientId");
-            _clientSecret = _config.GetValue<string>("EventSub:ClientSecret");
+            _maxRetries = config.GetValue<int>("EventSub:MaxRetries");
+            _clientId = config.GetValue<string>("EventSub:ClientId");
+            _clientSecret = config.GetValue<string>("EventSub:ClientSecret");
         }
 
         public async Task<TwitchEventSubs> GetEventsAsync()
         {
             var cancellationTokenSource = new CancellationTokenSource();
-
             var httpClient = await GenerateEventSubHttpClient();
             if (httpClient == default) return default;
-
-            var response = await httpClient.GetAsync(Shared.TwitchEventSubSubscriptionsEndpoint, cancellationTokenSource.Token);
 
             TwitchEventSubs twitchEventSubs = null;
 
             while (!cancellationTokenSource.IsCancellationRequested)
+            {
+                var response = await httpClient.GetAsync(Shared.TwitchEventSubSubscriptionsEndpoint,
+                    cancellationTokenSource.Token);
                 twitchEventSubs = await ParseResponse<TwitchEventSubs>(response, cancellationTokenSource);
+            }
 
             return twitchEventSubs;
         }
 
-        public async Task CreateEventAsync()
+        public async Task CreateStreamOnlineEvent(string channelId, Uri webHookUrl)
         {
+            var cancellationTokenSource = new CancellationTokenSource();
             var httpClient = await GenerateEventSubHttpClient();
             if (httpClient == default) return;
 
-            //var response = httpClient.PostAsync(Shared.TwitchEventSubSubscriptionsEndpoint)
+            const EventSubType eventType = EventSubType.StreamOnline;
+            var eventData = eventType.GetAttributeOfType<EventSubTypeAttribute>();
+
+            var secret = Guid.NewGuid();
+
+            var streamOnlineEvent = new TwitchEventSub
+            {
+                Type = eventData.Type,
+                Version = "1",
+                Condition = new Condition
+                {
+                    BroadcasterUserId = channelId
+                },
+                Transport = new Transport
+                {
+                    Method = "webhook",
+                    Callback = webHookUrl,
+                    Secret = secret.ToString()
+                }
+            };
+
+            StreamOnlineNotification streamOnline = null;
+
+            while (!cancellationTokenSource.IsCancellationRequested)
+            {
+                var response = await httpClient.PostAsNewtonsoftJsonAsync(Shared.TwitchEventSubSubscriptionsEndpoint,
+                    streamOnlineEvent, cancellationTokenSource.Token);
+                streamOnline = await ParseResponse<StreamOnlineNotification>(response, cancellationTokenSource);
+            }
         }
 
         private async Task AuthorizeAsync()
@@ -119,6 +153,13 @@ namespace EventSub.Lib.Services
         {
             if (response?.RequestMessage == null) return default;
 
+            if (response.RequestMessage.Content != null)
+            {
+                var requestContent = await response.RequestMessage.Content.ReadAsStringAsync();
+                _logger.LogDebug(
+                    $"[{response.RequestMessage.Method}] -> {response.RequestMessage.RequestUri}: {requestContent.Trim()}");
+            }
+
             var responseContent = await response.Content.ReadAsStringAsync(cancellationToken.Token);
 
             if (!response.IsSuccessStatusCode)
@@ -139,6 +180,7 @@ namespace EventSub.Lib.Services
             }
 
             _retryCounter = 0;
+            cancellationToken.Cancel(true);
             return JsonConvert.DeserializeObject<T>(responseContent);
         }
     }

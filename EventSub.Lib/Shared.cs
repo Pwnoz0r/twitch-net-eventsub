@@ -10,6 +10,6 @@ namespace EventSub.Lib
 
         public static Uri TwitchAuthUri { get; } = new("https://id.twitch.tv/oauth2/token");
 
-        public static string TwitchEventSubSubscriptionsEndpoint { get; } = "subscriptions2";
+        public static string TwitchEventSubSubscriptionsEndpoint { get; } = "subscriptions";
     }
 }
