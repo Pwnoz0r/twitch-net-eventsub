@@ -2,6 +2,7 @@
 
 using System;
 using System.Net.Http;
+using System.Threading;
 using System.Threading.Tasks;
 using EventSub.Lib.Interfaces;
 using EventSub.Lib.Models;
@@ -35,14 +36,17 @@ namespace EventSub.Lib.Services
 
         public async Task<TwitchEventSubs> GetEventsAsync()
         {
+            var cancellationTokenSource = new CancellationTokenSource();
+
             var httpClient = await GenerateEventSubHttpClient();
             if (httpClient == default) return default;
 
-            var response = await httpClient.GetAsync(Shared.TwitchEventSubSubscriptionsEndpoint);
+            var response = await httpClient.GetAsync(Shared.TwitchEventSubSubscriptionsEndpoint, cancellationTokenSource.Token);
 
             TwitchEventSubs twitchEventSubs = null;
 
-            while (twitchEventSubs == null) twitchEventSubs = await ParseResponse<TwitchEventSubs>(response);
+            while (!cancellationTokenSource.IsCancellationRequested)
+                twitchEventSubs = await ParseResponse<TwitchEventSubs>(response, cancellationTokenSource);
 
             return twitchEventSubs;
         }
@@ -99,7 +103,8 @@ namespace EventSub.Lib.Services
             if (_twitchClientToken == null)
             {
                 await AuthorizeAsync();
-                return default;
+                if (_twitchClientToken == null)
+                    return default;
             }
 
             var httpClient = new HttpClient {BaseAddress = Shared.TwitchEventSubBaseUri};
@@ -110,11 +115,11 @@ namespace EventSub.Lib.Services
             return httpClient;
         }
 
-        private async Task<T> ParseResponse<T>(HttpResponseMessage response)
+        private async Task<T> ParseResponse<T>(HttpResponseMessage response, CancellationTokenSource cancellationToken)
         {
             if (response?.RequestMessage == null) return default;
 
-            var responseContent = await response.Content.ReadAsStringAsync();
+            var responseContent = await response.Content.ReadAsStringAsync(cancellationToken.Token);
 
             if (!response.IsSuccessStatusCode)
             {
@@ -125,11 +130,12 @@ namespace EventSub.Lib.Services
 
                 if (_retryCounter >= _maxRetries)
                 {
-                    _retryCounter = 0;
+                    cancellationToken.Cancel(true);
                     return default;
                 }
 
-                await Task.Delay(TimeSpan.FromSeconds(3));
+                await Task.Delay(TimeSpan.FromSeconds(3), cancellationToken.Token);
+                return default;
             }
 
             _retryCounter = 0;

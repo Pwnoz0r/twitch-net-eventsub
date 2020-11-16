@@ -3,8 +3,8 @@
 	<PropertyGroup>
 		<OutputType>Exe</OutputType>
 		<TargetFramework>net5.0</TargetFramework>
-		<AssemblyVersion>2020.11.16.2226</AssemblyVersion>
-		<FileVersion>2020.11.16.2226</FileVersion>
+		<AssemblyVersion>2020.11.16.2242</AssemblyVersion>
+		<FileVersion>2020.11.16.2242</FileVersion>
 		<UserSecretsId>8924fe9c-8c47-41b7-aaa2-0750ae581cc9</UserSecretsId>
 	</PropertyGroup>
 
