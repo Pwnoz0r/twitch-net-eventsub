@@ -1,5 +1,6 @@
 ﻿// Copyright (c) 2020 Pwn (Jonathan) / All rights reserved.
 
+#nullable enable
 using System;
 using System.Net.Http;
 using System.Text;

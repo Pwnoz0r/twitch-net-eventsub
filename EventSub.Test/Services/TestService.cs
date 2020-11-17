@@ -1,4 +1,6 @@
-﻿using System;
+﻿// Copyright (c) 2020 Pwn (Jonathan) / All rights reserved.
+
+using System;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;

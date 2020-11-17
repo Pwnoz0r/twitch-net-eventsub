@@ -1,4 +1,9 @@
-﻿using Newtonsoft.Json;
+﻿// Copyright (c) 2020 Pwn (Jonathan) / All rights reserved.
+
+using EventSub.Lib.Attributes;
+using EventSub.Lib.Enums;
+using EventSub.Lib.Extensions;
+using Newtonsoft.Json;
 
 namespace EventSub.Lib.Models
 {
@@ -18,6 +23,9 @@ namespace EventSub.Lib.Models
 
         [JsonProperty("status", NullValueHandling = NullValueHandling.Ignore)]
         public string Status { get; set; }
+
+        public EventSubStatusType StatusType =>
+            Status.GetValueFromDescription<EventSubStatusType, EventSubStatusAttribute>("Status");
 
         [JsonProperty("type", NullValueHandling = NullValueHandling.Ignore)]
         public string Type { get; set; }
