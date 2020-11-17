@@ -1,13 +1,13 @@
 ﻿// Copyright (c) 2020 Pwn (Jonathan) / All rights reserved.
 
+using System;
 using System.Diagnostics;
 using System.IO;
 using System.Reflection;
-using EventSub.Lib.Interfaces;
-using EventSub.Lib.Services;
-using EventSub.Test.Services;
+using System.Threading.Tasks;
+using EventSub.Test;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Serilog;
 
@@ -18,6 +18,8 @@ await host.RunAsync();
 static IHostBuilder CreateHostBuilder()
 {
     var env = Debugger.IsAttached ? "Development" : "Production";
+
+    IConfiguration config = null;
 
     var host = Host.CreateDefaultBuilder()
         .UseEnvironment(env)
@@ -36,18 +38,30 @@ static IHostBuilder CreateHostBuilder()
                 configurationBuilder.AddUserSecrets(appAssembly, true);
             }
 
+            config = configurationBuilder.Build();
+
             Log.Logger = new LoggerConfiguration()
-                .ReadFrom.Configuration(configurationBuilder.Build())
+                .ReadFrom.Configuration(config)
                 .Enrich.FromLogContext()
                 .WriteTo.Console()
                 .CreateLogger();
 
             Log.Logger.Information($"Initialized for {env}");
         })
-        .ConfigureServices((_, services) =>
+        .ConfigureWebHostDefaults(async webHostBuilder =>
         {
-            services.AddScoped<IEventSub, EventSubService>();
-            services.AddHostedService<TestService>();
+            while (config == null) await Task.Delay(TimeSpan.FromMilliseconds(100));
+
+            if (env == "Development")
+                webHostBuilder.ConfigureKestrel(options =>
+                {
+                    options.ListenAnyIP(80);
+                    options.ListenAnyIP(443,
+                        listenOptions =>
+                            listenOptions.UseHttps(config.GetValue<string>("Dev:CertPath")));
+                });
+
+            webHostBuilder.UseStartup<Startup>();
         })
         .UseSerilog();
 

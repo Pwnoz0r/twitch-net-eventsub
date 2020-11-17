@@ -56,11 +56,11 @@ namespace EventSub.Lib.Services
             return twitchEventSubs;
         }
 
-        public async Task CreateStreamOnlineEvent(string channelId, Uri webHookUrl)
+        public async Task<StreamOnlineNotification> CreateStreamOnlineEventAsync(string channelId, Uri webHookUrl)
         {
             var cancellationTokenSource = new CancellationTokenSource();
             var httpClient = await GenerateEventSubHttpClient();
-            if (httpClient == default) return;
+            if (httpClient == default) return default;
 
             const EventSubType eventType = EventSubType.StreamOnline;
             var eventData = eventType.GetAttributeOfType<EventSubTypeAttribute>();
@@ -79,7 +79,7 @@ namespace EventSub.Lib.Services
                 {
                     Method = "webhook",
                     Callback = webHookUrl,
-                    Secret = secret.ToString()
+                    Secret = secret.ToString("N")
                 }
             };
 
@@ -90,6 +90,34 @@ namespace EventSub.Lib.Services
                 var response = await httpClient.PostAsNewtonsoftJsonAsync(Shared.TwitchEventSubSubscriptionsEndpoint,
                     streamOnlineEvent, cancellationTokenSource.Token);
                 streamOnline = await ParseResponse<StreamOnlineNotification>(response, cancellationTokenSource);
+            }
+
+            return streamOnline;
+        }
+
+        public async Task DeleteEventAsync(string subscriptionId)
+        {
+            var cancellationTokenSource = new CancellationTokenSource();
+            var httpClient = await GenerateEventSubHttpClient();
+            if (httpClient == default) return;
+
+            var queryBuilder = new QueryBuilder
+            {
+                {"id", subscriptionId}
+            };
+
+            var uriBuilder = new UriBuilder(Shared.TwitchEventSubBaseUri) {Query = queryBuilder.ToString()};
+
+            var response = await httpClient.DeleteAsync(uriBuilder.ToString(), cancellationTokenSource.Token);
+
+            if (response.IsSuccessStatusCode)
+            {
+                _logger.LogDebug($"Successfully deleted event: {subscriptionId}");
+            }
+            else
+            {
+                var responseString = await response.Content.ReadAsStringAsync(cancellationTokenSource.Token);
+                _logger.LogWarning($"Failed to delete {subscriptionId}: [{response.StatusCode}] {responseString}");
             }
         }
 

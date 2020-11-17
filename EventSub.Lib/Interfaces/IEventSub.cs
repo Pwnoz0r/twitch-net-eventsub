@@ -3,6 +3,7 @@
 using System;
 using System.Threading.Tasks;
 using EventSub.Lib.Models;
+using EventSub.Lib.Models.Responses;
 
 namespace EventSub.Lib.Interfaces
 {
@@ -10,6 +11,8 @@ namespace EventSub.Lib.Interfaces
     {
         Task<TwitchEventSubs> GetEventsAsync();
 
-        Task CreateStreamOnlineEvent(string channelId, Uri webHookUrl);
+        Task<StreamOnlineNotification> CreateStreamOnlineEventAsync(string channelId, Uri webHookUrl);
+
+        Task DeleteEventAsync(string subscriptionId);
     }
 }

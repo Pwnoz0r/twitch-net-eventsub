@@ -34,14 +34,32 @@ namespace EventSub.Test.Services
                 return;
             }
 
-            var eventSubs = await eventSub.GetEventsAsync();
+            var events = await eventSub.GetEventsAsync();
 
-            if (!eventSubs.Data.Any())
+            _logger.LogDebug($"Got {events.Data.Count} EventSubs");
+
+            if (!events.Data.Any())
             {
-                await eventSub.CreateStreamOnlineEvent(
+                var streamOnline = await eventSub.CreateStreamOnlineEventAsync(
                     _config.GetValue<string>("EventSub:StreamOnline:ChannelId"),
                     _config.GetValue<Uri>("EventSub:StreamOnline:WebHookUrl"));
+
+                var tempEvent = events.Data.FirstOrDefault(x => x.Id == streamOnline.Data.First().Id);
+
+                while (true)
+                {
+                    events = await eventSub.GetEventsAsync();
+                    tempEvent = events.Data.First(x => x.Id == streamOnline.Data.First().Id);
+
+                    if (tempEvent != default) _logger.LogDebug($"[{tempEvent.Id}]: {tempEvent.Status}");
+
+                    await Task.Delay(TimeSpan.FromSeconds(3), stoppingToken);
+                }
             }
+
+            foreach (var twitchEventSub in events.Data)
+                _logger.LogDebug($"[{twitchEventSub.Id}]: {twitchEventSub.Status}");
+            await eventSub.DeleteEventAsync(events.Data.First().Id);
         }
 
         public override Task StartAsync(CancellationToken cancellationToken)
