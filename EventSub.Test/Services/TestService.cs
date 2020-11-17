@@ -45,23 +45,15 @@ namespace EventSub.Test.Services
                 var streamOnline = await eventSub.CreateStreamOnlineEventAsync(
                     _config.GetValue<string>("EventSub:StreamOnline:ChannelId"),
                     _config.GetValue<Uri>("EventSub:StreamOnline:WebHookUrl"));
-
-                var tempEvent = events.Data.FirstOrDefault(x => x.Id == streamOnline.Data.First().Id);
-
-                while (true)
-                {
-                    events = await eventSub.GetEventsAsync();
-                    tempEvent = events.Data.First(x => x.Id == streamOnline.Data.First().Id);
-
-                    if (tempEvent != default) _logger.LogDebug($"[{tempEvent.Id}]: {tempEvent.Status}");
-
-                    await Task.Delay(TimeSpan.FromSeconds(3), stoppingToken);
-                }
             }
 
             foreach (var twitchEventSub in events.Data)
-                _logger.LogDebug($"[{twitchEventSub.Id}]: {twitchEventSub.Status}");
-            await eventSub.DeleteEventAsync(events.Data.First().Id);
+            {
+                if (twitchEventSub.Status != "enabled" && twitchEventSub.Status != "webhook_callback_verification_pending")
+                    await eventSub.DeleteEventAsync(events.Data.First().Id);
+
+                _logger.LogDebug($"[{twitchEventSub.Id}]: {twitchEventSub.Type} ({twitchEventSub.Status})");
+            }
         }
 
         public override Task StartAsync(CancellationToken cancellationToken)

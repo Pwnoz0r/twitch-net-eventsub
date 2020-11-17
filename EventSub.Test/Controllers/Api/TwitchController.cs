@@ -1,11 +1,16 @@
 ﻿// Copyright (c) 2020 Pwn (Jonathan) / All rights reserved.
 
 using System;
+using System.IO;
+using System.Text;
 using System.Threading.Tasks;
 using EventSub.Lib.Enums;
+using EventSub.Lib.Extensions;
 using EventSub.Lib.Models;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
+using Newtonsoft.Json;
 
 namespace EventSub.Test.Controllers.Api
 {
@@ -19,11 +24,18 @@ namespace EventSub.Test.Controllers.Api
             _logger = logger;
         }
 
+        [HttpGet]
+        [Route("stream")]
+        public async Task<IActionResult> GetStream()
+        {
+            return Ok();
+        }
+
         [HttpPost]
         [Route("stream")]
-        public async Task<IActionResult> StreamStatus([FromBody] CallbackVerify verify)
+        public async Task<IActionResult> PostStream([FromBody] Callback callback)
         {
-            switch (verify.Subscription.StatusType)
+            switch (callback.Subscription.StatusType)
             {
                 case EventSubStatusType.None: // Unable to parse status
                     break;
@@ -31,7 +43,7 @@ namespace EventSub.Test.Controllers.Api
                     break;
                 case EventSubStatusType.Pending:
                     // TODO: Verify status
-                    break;
+                    return Ok(callback.Challenge);
                 case EventSubStatusType.Failed:
                     break;
                 case EventSubStatusType.FailuresExceeded:
@@ -44,7 +56,9 @@ namespace EventSub.Test.Controllers.Api
                     throw new ArgumentOutOfRangeException();
             }
 
-            return Ok(verify.Challenge);
+            _logger.LogDebug($"{callback.Subscription.Id} -> [{callback.Event.BroadcasterUserName} ({callback.Event.BroadcasterUserId}): {callback.Event.Type}");
+
+            return Ok();
         }
     }
 }

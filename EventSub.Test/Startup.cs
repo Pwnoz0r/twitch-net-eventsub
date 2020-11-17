@@ -4,6 +4,7 @@ using EventSub.Lib.Interfaces;
 using EventSub.Lib.Services;
 using EventSub.Test.Services;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace EventSub.Test
@@ -22,11 +23,17 @@ namespace EventSub.Test
                 x.LowercaseQueryStrings = true;
             });
 
-            services.AddControllers();
+            services.AddControllers().AddNewtonsoftJson();
         }
 
         public void Configure(IApplicationBuilder app)
         {
+            app.Use(async (context, next) =>
+            {
+                context.Request.EnableBuffering();
+                await next();
+            });
+
             app.UseHttpsRedirection();
 
             app.UseRouting();

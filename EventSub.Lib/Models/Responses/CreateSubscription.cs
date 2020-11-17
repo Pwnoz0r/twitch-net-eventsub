@@ -1,12 +1,11 @@
 ﻿// Copyright (c) 2020 Pwn (Jonathan) / All rights reserved.
 
-using System;
 using System.Collections.Generic;
 using Newtonsoft.Json;
 
 namespace EventSub.Lib.Models.Responses
 {
-    public class StreamOnlineNotification
+    public class CreateSubscription
     {
         [JsonProperty("data", NullValueHandling = NullValueHandling.Ignore)]
         public List<Datum> Data { get; set; }
@@ -40,20 +39,5 @@ namespace EventSub.Lib.Models.Responses
 
         [JsonProperty("transport", NullValueHandling = NullValueHandling.Ignore)]
         public Transport Transport { get; set; }
-    }
-
-    public class Condition
-    {
-        [JsonProperty("broadcaster_user_id", NullValueHandling = NullValueHandling.Ignore)]
-        public string BroadcasterUserId { get; set; }
-    }
-
-    public class Transport
-    {
-        [JsonProperty("method", NullValueHandling = NullValueHandling.Ignore)]
-        public string Method { get; set; }
-
-        [JsonProperty("callback", NullValueHandling = NullValueHandling.Ignore)]
-        public Uri Callback { get; set; }
     }
 }

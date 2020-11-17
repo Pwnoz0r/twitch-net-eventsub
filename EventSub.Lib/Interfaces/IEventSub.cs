@@ -11,7 +11,7 @@ namespace EventSub.Lib.Interfaces
     {
         Task<TwitchEventSubs> GetEventsAsync();
 
-        Task<StreamOnlineNotification> CreateStreamOnlineEventAsync(string channelId, Uri webHookUrl);
+        Task<CreateSubscription> CreateStreamOnlineEventAsync(string channelId, Uri webHookUrl);
 
         Task DeleteEventAsync(string subscriptionId);
     }

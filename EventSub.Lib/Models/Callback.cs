@@ -7,13 +7,37 @@ using Newtonsoft.Json;
 
 namespace EventSub.Lib.Models
 {
-    public class CallbackVerify
+    public class Callback
     {
         [JsonProperty("subscription", NullValueHandling = NullValueHandling.Ignore)]
         public Subscription Subscription { get; set; }
 
+        [JsonProperty("event", NullValueHandling = NullValueHandling.Ignore)]
+        public Event Event { get; set; }
+
         [JsonProperty("challenge", NullValueHandling = NullValueHandling.Ignore)]
         public string Challenge { get; set; }
+    }
+
+    public class Event
+    {
+        [JsonProperty("id", NullValueHandling = NullValueHandling.Ignore)]
+        public string Id { get; set; }
+
+        [JsonProperty("user_id", NullValueHandling = NullValueHandling.Ignore)]
+        public string UserId { get; set; }
+
+        [JsonProperty("user_name", NullValueHandling = NullValueHandling.Ignore)]
+        public string UserName { get; set; }
+
+        [JsonProperty("broadcaster_user_id", NullValueHandling = NullValueHandling.Ignore)]
+        public string BroadcasterUserId { get; set; }
+
+        [JsonProperty("broadcaster_user_name", NullValueHandling = NullValueHandling.Ignore)]
+        public string BroadcasterUserName { get; set; }
+
+        [JsonProperty("type", NullValueHandling = NullValueHandling.Ignore)]
+        public string Type { get; set; }
     }
 
     public class Subscription
