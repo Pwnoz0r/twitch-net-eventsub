@@ -13,6 +13,8 @@ namespace EventSub.Lib.Interfaces
 
         Task<CreateSubscription> CreateStreamOnlineEventAsync(string channelId, Uri webHookUrl);
 
+        Task<CreateSubscription> CreateStreamOfflineEventAsync(string channelId, Uri webHookUrl);
+
         Task DeleteEventAsync(string subscriptionId);
     }
 }

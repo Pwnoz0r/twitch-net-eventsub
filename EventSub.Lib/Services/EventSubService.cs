@@ -95,6 +95,45 @@ namespace EventSub.Lib.Services
             return streamOnline;
         }
 
+        public async Task<CreateSubscription> CreateStreamOfflineEventAsync(string channelId, Uri webHookUrl)
+        {
+            var cancellationTokenSource = new CancellationTokenSource();
+            var httpClient = await GenerateEventSubHttpClient();
+            if (httpClient == default) return default;
+
+            const EventSubType eventType = EventSubType.StreamOffline;
+            var eventData = eventType.GetAttributeOfType<EventSubTypeAttribute>();
+
+            var secret = Guid.NewGuid();
+
+            var streamOnlineEvent = new TwitchEventSub
+            {
+                Type = eventData.Type,
+                Version = "1",
+                Condition = new Condition
+                {
+                    BroadcasterUserId = channelId
+                },
+                Transport = new Transport
+                {
+                    Method = "webhook",
+                    Callback = webHookUrl,
+                    Secret = secret.ToString("N")
+                }
+            };
+
+            CreateSubscription streamOnline = null;
+
+            while (!cancellationTokenSource.IsCancellationRequested)
+            {
+                var response = await httpClient.PostAsNewtonsoftJsonAsync(Shared.TwitchEventSubSubscriptionsEndpoint,
+                    streamOnlineEvent, cancellationTokenSource.Token);
+                streamOnline = await ParseResponse<CreateSubscription>(response, cancellationTokenSource);
+            }
+
+            return streamOnline;
+        }
+
         public async Task DeleteEventAsync(string subscriptionId)
         {
             var cancellationTokenSource = new CancellationTokenSource();

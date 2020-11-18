@@ -54,6 +54,8 @@ namespace EventSub.Lib.Models
         [JsonProperty("type", NullValueHandling = NullValueHandling.Ignore)]
         public string Type { get; set; }
 
+        public EventSubType EventType => Type.GetValueFromDescription<EventSubType, EventSubTypeAttribute>("Type");
+
         [JsonProperty("version", NullValueHandling = NullValueHandling.Ignore)]
         public string Version { get; set; }
 
